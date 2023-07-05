@@ -1,12 +1,15 @@
 package volume
 
 import (
+	"sync"
+
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/sirupsen/logrus"
 )
 
 type FTPDriver struct {
-	logger *logrus.Logger
+	logger  *logrus.Logger
+	volumes *sync.Map
 }
 
 func InitializeNewFTPDriver(logger *logrus.Logger) *FTPDriver {
@@ -14,7 +17,7 @@ func InitializeNewFTPDriver(logger *logrus.Logger) *FTPDriver {
 }
 
 func (d *FTPDriver) Create(req *volume.CreateRequest) error {
-	d.logger.WithFields(logrus.Fields{"Name": req.Name, "Opt":  req.Options}).Info("Create request")
+	d.logger.WithFields(logrus.Fields{"Name": req.Name, "Opt": req.Options}).Info("Create request")
 	return nil
 }
 
