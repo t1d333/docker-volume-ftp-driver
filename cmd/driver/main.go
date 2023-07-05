@@ -16,6 +16,8 @@ func main() {
 	handler := volume.NewHandler(driver)
 	u, _ := user.Lookup("root")
 	gid, _ := strconv.Atoi(u.Gid)
-    logger.Info("Serve unix")
-	handler.ServeUnix("ftp-driver", gid)
+	if err := handler.ServeUnix("ftp-driver", gid); err != nil {
+		logger.WithField("Error", err).Fatal("Can't start plugin")
+	}
+	logger.Info("Serve unix")
 }

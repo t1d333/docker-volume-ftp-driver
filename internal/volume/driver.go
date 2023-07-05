@@ -1,15 +1,12 @@
 package volume
 
 import (
-	"sync"
-
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/sirupsen/logrus"
 )
 
 type FTPDriver struct {
-	logger  *logrus.Logger
-	volumes *sync.Map
+	logger *logrus.Logger
 }
 
 func InitializeNewFTPDriver(logger *logrus.Logger) *FTPDriver {
