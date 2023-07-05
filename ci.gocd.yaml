@@ -1,0 +1,49 @@
+format_versions: 10
+pipelines:
+  driver-ci:
+    display_order: -1
+    group: defaultGroup
+    label_template: ${COUNT}
+    lock_behavior: none
+    materials:
+      git-b3e173b:
+        auto_update: true
+        branch: main
+        git: https://github.com/t1d333/docker-volume-ftp-driver
+        shallow_clone: false
+    stages:
+      - lint-and-test:
+          approval:
+            allow_only_on_success: false
+            type: success
+          clean_workspace: false
+          fetch_materials: true
+          jobs:
+            run-lint:
+              tasks:
+                - exec:
+                    command: ls
+                    run_if: passed
+              timeout: 0
+            run-tests:
+              tasks:
+                - exec:
+                    command: ls
+                    run_if: passed
+              timeout: 0
+          keep_artifacts: false
+      - deploy:
+          approval:
+            allow_only_on_success: true
+            type: success
+          clean_workspace: false
+          fetch_materials: true
+          jobs:
+            upload:
+              tasks:
+                - exec:
+                    command: ls
+                    run_if: passed
+
+              timeout: 0
+          keep_artifacts: false
