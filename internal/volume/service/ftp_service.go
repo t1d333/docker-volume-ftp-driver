@@ -24,10 +24,10 @@ type FTPServiceOpt struct {
 }
 
 func getURL(opt FTPServiceOpt) string {
-	return fmt.Sprintf("ftp://%s:%s@%s:%d", opt.User, opt.Password, opt.Host, opt.Port)
+	return fmt.Sprintf("%s:%d", opt.Host, opt.Port)
 }
 
-func CreateFTPService(opt FTPServiceOpt, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
+func CreateFTPService(opt FTPServiceOpt, rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
 	logger.Info("Connecting to ftp server...")
 	conn, err := ftp.Dial(getURL(opt), ftp.DialWithTimeout(5*time.Second))
 	if err != nil {
@@ -35,6 +35,12 @@ func CreateFTPService(opt FTPServiceOpt, logger *logrus.Logger) (pkgVolume.Volum
 		return nil, errors.New("Unable to connect to ftp server")
 	}
 
+	if err := conn.Login(opt.User, opt.Password); err != nil {
+		logger.WithField("Error", err).Error("Unable to connect to ftp server")
+		return nil, errors.New("Unable to connect to ftp server. Failed authentication")
+	}
+
+	logger.Info("Successful connection to ftp server")
 	return &service{conn: conn, logger: logger}, nil
 }
 

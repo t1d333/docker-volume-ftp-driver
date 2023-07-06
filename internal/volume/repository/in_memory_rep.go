@@ -14,7 +14,7 @@ type repository struct {
 	logger *logrus.Logger
 }
 
-func NewInMemoryRepository(logger *logrus.Logger) pkgVolume.VolumeRepository {
+func CreateInMemoryRepository(logger *logrus.Logger) pkgVolume.VolumeRepository {
 	return &repository{data: new(sync.Map), logger: logger}
 }
 
