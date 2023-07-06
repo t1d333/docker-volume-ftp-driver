@@ -13,6 +13,10 @@ import (
 	"github.com/t1d333/docker-volume-ftp-driver/internal/volume/service"
 )
 
+const (
+	mountpoint = "/var/run/docker/ftp-driver/files"
+)
+
 func main() {
 	ftpUser := flag.String("u", "", "FTP server user")
 	ftpPassword := flag.String("P", "", "Password for FTP server user")
@@ -26,7 +30,7 @@ func main() {
 
 	logger := pkgLogger.InitializeNewLogger()
 	rep := repository.CreateInMemoryRepository(logger)
-	_, err := service.CreateFTPService(service.FTPServiceOpt{
+	serv, err := service.CreateFTPService(service.FTPServiceOpt{
 		Password: *ftpPassword,
 		User:     *ftpUser,
 		Host:     *ftpHost,
@@ -36,7 +40,7 @@ func main() {
 		return
 	}
 
-	driver := pkgVolume.InitializeNewFTPDriver(logger)
+	driver := pkgVolume.InitializeNewFTPDriver(serv, logger)
 	handler := volume.NewHandler(driver)
 	u, _ := user.Lookup("root")
 	gid, _ := strconv.Atoi(u.Gid)

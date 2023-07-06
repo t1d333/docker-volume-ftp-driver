@@ -1,14 +1,18 @@
 package volume
 
-import "github.com/docker/go-plugins-helpers/volume"
+import (
+	"github.com/docker/go-plugins-helpers/volume"
+	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
+)
 
 type VolumeRepository interface {
-	Create(id int, name string) error
+	Create(v *volume.Volume, opt *models.VolumeOptions) error
 	List() ([]*volume.Volume, error)
 	Get(name string) (*volume.Volume, error)
 	Remove(name string) error
 	Path(name string) (string, error)
-	Mount(id int, name string) (string, error)
-	Unmount(id int, name string) error
-	Capabilities() volume.Capability
+	Mount(volume *volume.Volume) error
+	Unmount(id, name string) error
+	IsMount(name string) bool
+	GetVolumeOptions(name string) *models.VolumeOptions
 }

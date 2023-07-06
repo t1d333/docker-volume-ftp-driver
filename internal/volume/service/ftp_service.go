@@ -3,17 +3,29 @@ package service
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/jlaffaye/ftp"
 	"github.com/sirupsen/logrus"
+	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
 	pkgVolume "github.com/t1d333/docker-volume-ftp-driver/internal/volume"
 )
 
+const (
+	mountpoint = "/var/run/docker/ftp-driver/"
+)
+
 type service struct {
-	conn   *ftp.ServerConn
-	logger *logrus.Logger
+	conn       *ftp.ServerConn
+	rep        pkgVolume.VolumeRepository
+	logger     *logrus.Logger
+	opt        FTPServiceOpt
+	mountpoint string
 }
 
 type FTPServiceOpt struct {
@@ -41,19 +53,41 @@ func CreateFTPService(opt FTPServiceOpt, rep pkgVolume.VolumeRepository, logger 
 	}
 
 	logger.Info("Successful connection to ftp server")
-	return &service{conn: conn, logger: logger}, nil
+	return &service{conn: conn, logger: logger, rep: rep, opt: opt, mountpoint: mountpoint}, nil
 }
 
 func (s *service) Create(name string, opt map[string]string) error {
-	return nil
+	path, ok := opt["remotepath"]
+	if !ok {
+		path = "/"
+	}
+
+	if ok {
+		if err := s.conn.MakeDir(strings.TrimPrefix(path, "/")); err != nil {
+			s.logger.Error("Failed to create remote directory")
+			return err
+		}
+	}
+
+	vol := &volume.Volume{
+		Name:       name,
+		CreatedAt:  time.Now().Format(time.RFC3339Nano),
+		Mountpoint: filepath.Join(s.mountpoint, name),
+	}
+
+	volumeOpt := &models.VolumeOptions{
+		RemotePath: path,
+	}
+
+	return s.rep.Create(vol, volumeOpt)
 }
 
 func (s *service) List() ([]*volume.Volume, error) {
-	return []*volume.Volume{}, nil
+	return s.rep.List()
 }
 
 func (s *service) Get(name string) (*volume.Volume, error) {
-	return nil, nil
+	return s.rep.Get(name)
 }
 
 func (s *service) Remove(name string) error {
@@ -61,17 +95,40 @@ func (s *service) Remove(name string) error {
 }
 
 func (s *service) Path(name string) (string, error) {
-	return "", nil
+	return s.rep.Path(name)
 }
 
-func (s *service) Mount(id int, name string) (string, error) {
-	return "", nil
+func (s *service) Mount(id, name string) (string, error) {
+	volume, err := s.Get(name)
+	if err != nil {
+		return "", err
+	}
+
+	if s.rep.IsMount(volume.Name) {
+		return "", fmt.Errorf("Volume with name '%s' already mounted", volume.Name)
+	}
+
+	if err := os.MkdirAll(volume.Mountpoint, 7777); err != nil {
+		return "", errors.New("Failed to create mount point")
+	}
+
+	opt := s.rep.GetVolumeOptions(volume.Name)
+
+	ftpPath := fmt.Sprintf("%s:%d%s", s.opt.Host, s.opt.Port, opt.RemotePath)
+
+	cmd := exec.Command("curlftpfs", ftpPath, volume.Mountpoint, "-o", fmt.Sprintf("user=%s:%s", s.opt.User, s.opt.Password))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		s.logger.WithFields(logrus.Fields{"Error": err, "Out": string(out)}).Error("Failed to mount directory")
+		return "", errors.New("Failed to mount directory")
+	}
+
+	return volume.Mountpoint, nil
 }
 
-func (s *service) Unmount(id int, name string) error {
+func (s *service) Unmount(id, name string) error {
 	return nil
 }
 
 func (s *service) Capabilities() volume.Capability {
-	return volume.Capability{}
+	return volume.Capability{Scope: "local"}
 }

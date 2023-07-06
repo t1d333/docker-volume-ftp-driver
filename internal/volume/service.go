@@ -8,7 +8,7 @@ type VolumeService interface {
 	Get(name string) (*volume.Volume, error)
 	Remove(name string) error
 	Path(name string) (string, error)
-	Mount(id int, name string) (string, error)
-	Unmount(id int, name string) error
+	Mount(id, name string) (string, error)
+	Unmount(id, name string) error
 	Capabilities() volume.Capability
 }
