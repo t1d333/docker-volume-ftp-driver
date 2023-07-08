@@ -50,7 +50,7 @@ func (d *FTPDriver) Mount(req *volume.MountRequest) (*volume.MountResponse, erro
 
 func (d *FTPDriver) Unmount(req *volume.UnmountRequest) error {
 	d.logger.WithFields(logrus.Fields{"ID": req.ID, "Name": req.Name}).Info("Unmount request")
-	return nil
+	return d.serv.Unmount(req.ID, req.Name)
 }
 
 func (d *FTPDriver) Capabilities() *volume.CapabilitiesResponse {

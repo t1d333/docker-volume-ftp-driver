@@ -11,8 +11,9 @@ type VolumeRepository interface {
 	Get(name string) (*volume.Volume, error)
 	Remove(name string) error
 	Path(name string) (string, error)
-	Mount(volume *volume.Volume) error
+	Mount(id string, volume *volume.Volume) error
 	Unmount(id, name string) error
 	IsMount(name string) bool
+	GetMountedIdsList(name string) []string
 	GetVolumeOptions(name string) *models.VolumeOptions
 }

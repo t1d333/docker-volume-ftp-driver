@@ -70,10 +70,20 @@ func (r *repository) Path(name string) (string, error) {
 	return vol.Mountpoint, nil
 }
 
-func (r *repository) Mount(volume *volume.Volume) error {
-	_, ok := r.mountedVolumes.LoadOrStore(volume.Name, volume)
+func (r *repository) Mount(id string, volume *volume.Volume) error {
+	ids, ok := r.mountedVolumes.Load(volume.Name)
 	if ok {
-		return errors.New("Volume with this name already mounted")
+		ids := ids.(*sync.Map)
+		_, ok := ids.LoadOrStore(id, true)
+
+		if ok {
+			return errors.New("Volume with this name already mounted")
+		}
+
+	} else {
+		ids := new(sync.Map)
+		ids.Store(id, true)
+		r.mountedVolumes.Store(volume.Name, ids)
 	}
 
 	return nil
@@ -81,9 +91,43 @@ func (r *repository) Mount(volume *volume.Volume) error {
 
 func (r *repository) IsMount(name string) bool {
 	_, ok := r.mountedVolumes.Load(name)
-	return ok
+	if !ok {
+		return ok
+	}
+
+	list := r.GetMountedIdsList(name)
+	return len(list) > 0
 }
 
 func (r *repository) Unmount(id, name string) error {
+	ids, ok := r.mountedVolumes.Load(name)
+	if !ok {
+		return errors.New("Volume is not mounted")
+	} else {
+		ids := ids.(*sync.Map)
+		_, ok := ids.Load(id)
+		if ok {
+			ids.Delete(id)
+		} else {
+			return errors.New("Volume is not mounted")
+		}
+	}
+
 	return nil
+}
+
+func (r *repository) GetMountedIdsList(name string) []string {
+	ids, ok := r.mountedVolumes.Load(name)
+	if ok {
+		ids := ids.(*sync.Map)
+		list := make([]string, 0)
+
+		ids.Range(func(key, value any) bool {
+			list = append(list, key.(string))
+			return true
+		})
+		return list
+	}
+
+	return []string{}
 }

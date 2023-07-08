@@ -105,10 +105,12 @@ func (s *service) Mount(id, name string) (string, error) {
 	}
 
 	if s.rep.IsMount(volume.Name) {
-		return "", fmt.Errorf("Volume with name '%s' already mounted", volume.Name)
+		return volume.Mountpoint, nil
 	}
 
-	if err := os.MkdirAll(volume.Mountpoint, 7777); err != nil {
+	s.rep.Mount(id, volume)
+	if err := os.MkdirAll(volume.Mountpoint, 0755); err != nil {
+		s.logger.WithField("Error", err).Error("Failed to create mount point")
 		return "", errors.New("Failed to create mount point")
 	}
 
@@ -116,7 +118,7 @@ func (s *service) Mount(id, name string) (string, error) {
 
 	ftpPath := fmt.Sprintf("%s:%d%s", s.opt.Host, s.opt.Port, opt.RemotePath)
 
-	cmd := exec.Command("curlftpfs", ftpPath, volume.Mountpoint, "-o", fmt.Sprintf("user=%s:%s", s.opt.User, s.opt.Password))
+	cmd := exec.Command("curlftpfs", ftpPath, volume.Mountpoint, "-o", fmt.Sprintf("user=%s:%s", s.opt.User, s.opt.Password), "-o", "nonempty")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		s.logger.WithFields(logrus.Fields{"Error": err, "Out": string(out)}).Error("Failed to mount directory")
 		return "", errors.New("Failed to mount directory")
@@ -126,6 +128,35 @@ func (s *service) Mount(id, name string) (string, error) {
 }
 
 func (s *service) Unmount(id, name string) error {
+	volume, err := s.Get(name)
+	if err != nil {
+		return err
+	}
+
+	if !s.rep.IsMount(volume.Name) {
+		return fmt.Errorf("Volume with name: '%s' is not mounted", name)
+	}
+
+	if err := s.rep.Unmount(id, name); err != nil {
+		return err
+	}
+
+	if list := s.rep.GetMountedIdsList(name); len(list) != 0 {
+		s.logger.Info("Mounted list", list)
+		return nil
+	}
+
+	cmd := exec.Command("umount", volume.Mountpoint)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		s.logger.WithFields(logrus.Fields{"Error": err, "Out": string(out)}).Error("Failed to unmount directory")
+		return errors.New("Failed to unmount directory")
+	}
+
+	if err := os.RemoveAll(volume.Mountpoint); err != nil {
+		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to remove mounted directory")
+		return errors.New("Failed to remove mounted directory")
+	}
+
 	return nil
 }
 
