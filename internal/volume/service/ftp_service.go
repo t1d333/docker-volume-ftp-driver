@@ -108,7 +108,10 @@ func (s *service) Mount(id, name string) (string, error) {
 		return volume.Mountpoint, nil
 	}
 
-	s.rep.Mount(id, volume)
+	if err := s.rep.Mount(id, volume); err != nil {
+		return "", err
+	}
+
 	if err := os.MkdirAll(volume.Mountpoint, 0755); err != nil {
 		s.logger.WithField("Error", err).Error("Failed to create mount point")
 		return "", errors.New("Failed to create mount point")

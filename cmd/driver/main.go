@@ -13,10 +13,6 @@ import (
 	"github.com/t1d333/docker-volume-ftp-driver/internal/volume/service"
 )
 
-const (
-	mountpoint = "/var/run/docker/ftp-driver/files"
-)
-
 func main() {
 	ftpUser := flag.String("u", "", "FTP server user")
 	ftpPassword := flag.String("P", "", "Password for FTP server user")
