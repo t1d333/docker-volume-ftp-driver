@@ -33,7 +33,7 @@ func (d *FTPDriver) Get(req *volume.GetRequest) (*volume.GetResponse, error) {
 
 func (d *FTPDriver) Remove(req *volume.RemoveRequest) error {
 	d.logger.WithFields(logrus.Fields{"Name": req.Name}).Info("Remove request")
-	return nil
+	return d.serv.Remove(req.Name)
 }
 
 func (d *FTPDriver) Path(req *volume.PathRequest) (*volume.PathResponse, error) {

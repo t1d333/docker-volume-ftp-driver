@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/docker/go-plugins-helpers/volume"
@@ -57,6 +58,16 @@ func (r *repository) Get(name string) (*volume.Volume, error) {
 }
 
 func (r *repository) Remove(name string) error {
+	if _, err := r.Get(name); err != nil {
+		return err
+	}
+
+	if r.IsMount(name) {
+		return fmt.Errorf("Volume with name '%s' is currently used", name)
+	}
+
+	r.volumes.Delete(name)
+
 	return nil
 }
 

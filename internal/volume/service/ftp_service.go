@@ -63,6 +63,7 @@ func (s *service) Create(name string, opt map[string]string) error {
 	}
 
 	if ok {
+		// TODO: обработка создания вложенных директорий
 		if err := s.conn.MakeDir(strings.TrimPrefix(path, "/")); err != nil {
 			s.logger.Error("Failed to create remote directory")
 			return err
@@ -91,6 +92,26 @@ func (s *service) Get(name string) (*volume.Volume, error) {
 }
 
 func (s *service) Remove(name string) error {
+	volume, err := s.rep.Get(name)
+	if err != nil {
+		s.logger.WithFields(logrus.Fields{"Name": name, "Error": err}).Error("Failed to get volume for remove")
+		return err
+	}
+
+	if isMount := s.rep.IsMount(name); isMount {
+		s.logger.WithFields(logrus.Fields{"Name": name}).Error("Volume with is currently used")
+		return fmt.Errorf("Volume with name '%s' is currently used", name)
+	}
+
+	if err := s.rep.Remove(name); err != nil {
+		return err
+	}
+
+	if err := os.RemoveAll(volume.Mountpoint); err != nil {
+		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to remove volume directory")
+		return err
+	}
+
 	return nil
 }
 
