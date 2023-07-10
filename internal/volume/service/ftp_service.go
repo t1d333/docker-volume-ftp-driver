@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/docker/go-plugins-helpers/volume"
@@ -21,54 +21,80 @@ const (
 )
 
 type service struct {
-	conn       *ftp.ServerConn
 	rep        pkgVolume.VolumeRepository
 	logger     *logrus.Logger
-	opt        FTPServiceOpt
 	mountpoint string
 }
 
-type FTPServiceOpt struct {
-	User     string
-	Host     string
-	Port     int
-	Password string
-}
-
-func getURL(opt FTPServiceOpt) string {
+func getURL(opt models.FTPConnectionOpt) string {
 	return fmt.Sprintf("%s:%d", opt.Host, opt.Port)
 }
 
-func CreateFTPService(opt FTPServiceOpt, rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
-	logger.Info("Connecting to ftp server...")
-	conn, err := ftp.Dial(getURL(opt), ftp.DialWithTimeout(5*time.Second))
-	if err != nil {
-		logger.WithField("Error", err).Error("Unable to connect to ftp server")
-		return nil, errors.New("Unable to connect to ftp server")
-	}
+func CreateFTPService(rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
+	// logger.Info("Connecting to ftp server...")
+	// conn, err := ftp.Dial(getURL(opt), ftp.DialWithTimeout(5*time.Second))
+	// if err != nil {
+	// 	logger.WithField("Error", err).Error("Unable to connect to ftp server")
+	// 	return nil, errors.New("Unable to connect to ftp server")
+	// }
 
-	if err := conn.Login(opt.User, opt.Password); err != nil {
-		logger.WithField("Error", err).Error("Unable to connect to ftp server")
-		return nil, errors.New("Unable to connect to ftp server. Failed authentication")
-	}
+	// if err := conn.Login(opt.User, opt.Password); err != nil {
+	// 	logger.WithField("Error", err).Error("Unable to connect to ftp server")
+	// 	return nil, errors.New("Unable to connect to ftp server. Failed authentication")
+	// }
 
-	logger.Info("Successful connection to ftp server")
-	return &service{conn: conn, logger: logger, rep: rep, opt: opt, mountpoint: mountpoint}, nil
+	return &service{logger: logger, rep: rep, mountpoint: mountpoint}, nil
 }
 
 func (s *service) Create(name string, opt map[string]string) error {
 	path, ok := opt["remotepath"]
+
 	if !ok {
 		path = "/"
 	}
 
-	if ok {
-		// TODO: обработка создания вложенных директорий
-		if err := s.conn.MakeDir(strings.TrimPrefix(path, "/")); err != nil {
-			s.logger.Error("Failed to create remote directory")
-			return err
-		}
+	ftpOpt := models.FTPConnectionOpt{}
+
+	if host, ok := opt["host"]; !ok {
+		return errors.New("Not specified from required one of the options")
+	} else {
+		ftpOpt.Host = host
 	}
+
+	if user, ok := opt["user"]; !ok {
+		return errors.New("Not specified from required one of the options")
+	} else {
+		ftpOpt.User = user
+	}
+
+	if port, ok := opt["port"]; !ok {
+		return errors.New("Not specified from required one of the options")
+	} else {
+		port, err := strconv.Atoi(port)
+		if err != nil {
+			return errors.New("Not a valid port")
+		}
+		ftpOpt.Port = port
+	}
+
+	if password, ok := opt["password"]; !ok {
+		return errors.New("Not specified from required one of the options")
+	} else {
+		ftpOpt.Password = password
+	}
+
+	conn, err := ftp.Dial(getURL(ftpOpt), ftp.DialWithTimeout(5*time.Second))
+	if err != nil {
+		s.logger.WithField("Error", err).Error("Unable to connect to ftp server")
+		return errors.New("Unable to connect to ftp server")
+	}
+
+	if err := conn.Login(ftpOpt.User, ftpOpt.Password); err != nil {
+		s.logger.WithField("Error", err).Error("Unable to connect to ftp server")
+		return errors.New("Unable to connect to ftp server. Failed authentication")
+	}
+
+	ftpOpt.Conn = conn
 
 	vol := &volume.Volume{
 		Name:       name,
@@ -77,8 +103,11 @@ func (s *service) Create(name string, opt map[string]string) error {
 	}
 
 	volumeOpt := &models.VolumeOptions{
-		RemotePath: path,
+		RemotePath:       path,
+		FTPConnectionOpt: ftpOpt,
 	}
+
+	// TODO: добавить обработку параметра remotepath, если каталог по remotepath не существует
 
 	return s.rep.Create(vol, volumeOpt)
 }
@@ -140,9 +169,9 @@ func (s *service) Mount(id, name string) (string, error) {
 
 	opt := s.rep.GetVolumeOptions(volume.Name)
 
-	ftpPath := fmt.Sprintf("%s:%d%s", s.opt.Host, s.opt.Port, opt.RemotePath)
+	ftpPath := fmt.Sprintf("%s:%d%s", opt.Host, opt.Port, opt.RemotePath)
 
-	cmd := exec.Command("curlftpfs", ftpPath, volume.Mountpoint, "-o", fmt.Sprintf("user=%s:%s", s.opt.User, s.opt.Password), "-o", "nonempty")
+	cmd := exec.Command("curlftpfs", ftpPath, volume.Mountpoint, "-o", fmt.Sprintf("user=%s:%s", opt.User, opt.Password), "-o", "nonempty")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		s.logger.WithFields(logrus.Fields{"Error": err, "Out": string(out)}).Error("Failed to mount directory")
 		return "", errors.New("Failed to mount directory")

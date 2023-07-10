@@ -1,0 +1,39 @@
+{
+  "Description": "A volume plugin for mount remote dir from ftp server",
+  "Documentation": "",
+  "Entrypoint": [
+    "/driver"
+  ],
+  "Env": [
+    {
+      "Description": "",
+      "Name": "DEBUG",
+      "Settable": [
+        "value"
+      ],
+      "Value": "0"
+    }
+  ],
+  "Interface": {
+    "Socket": "ftp-driver.sock",
+    "Types": [
+      "docker.volumedriver/1.0"
+    ]
+  },
+  "Linux": {
+	"Capabilities": [
+      "CAP_SYS_ADMIN"
+    ],
+    "Devices": [
+      {
+        "Path": "/dev/fuse"
+      }
+    ]
+  },
+  "Mounts": null,
+  "Network": {
+	  "Type": "host"
+  },
+  
+  "PropagatedMount": "/var/run/docker/ftp-driver/"
+}
