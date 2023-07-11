@@ -182,7 +182,7 @@ func TestPathSimple(t *testing.T) {
 	rep := CreateInMemoryRepository(logger)
 	path := "/mnt/test"
 	volume := &volume.Volume{Name: "test", Mountpoint: path}
-	rep.Create(volume, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(volume, &models.VolumeOptions{}))
 	got, err := rep.Path(volume.Name)
 	assert.Nil(t, err, fmt.Sprintf("Unexpected error on test: get path simple \n Input: {volume: %v} \n Error: %v", *volume, err))
 	assert.Equal(t, path, got, "Paths not equal")
@@ -202,7 +202,7 @@ func TestRemoveSimple(t *testing.T) {
 	logger.SetLevel(logrus.FatalLevel)
 	rep := CreateInMemoryRepository(logger)
 	volume := &volume.Volume{Name: "test"}
-	rep.Create(volume, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(volume, &models.VolumeOptions{}))
 	err := rep.Remove(volume.Name)
 	assert.Nil(t, err, fmt.Sprintf("Unexpected error on test: remove simple \n Input: {volume: %v} \n Error: %v", *volume, err))
 	_, err = rep.Get(volume.Name)
@@ -223,9 +223,9 @@ func TestRemoveMountedVolume(t *testing.T) {
 	rep := CreateInMemoryRepository(logger)
 
 	volume := &volume.Volume{Name: "test"}
-	rep.Create(volume, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(volume, &models.VolumeOptions{}))
 
-	rep.Mount(uuid.NewString(), volume)
+	assert.Nil(t, rep.Mount(uuid.NewString(), volume))
 	err := rep.Remove(volume.Name)
 
 	assert.Error(t, err, "Removing mounted volume")
@@ -239,7 +239,7 @@ func TestMountSimple(t *testing.T) {
 
 	vol := &volume.Volume{Name: "test"}
 
-	rep.Create(vol, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(vol, &models.VolumeOptions{}))
 
 	err := rep.Mount(uuid.NewString(), vol)
 	assert.Nil(t, err, fmt.Sprintf("Unexpected error on test: mount simple \n Input: {volume: %v} \n Error: %v", *vol, err))
@@ -247,7 +247,7 @@ func TestMountSimple(t *testing.T) {
 	assert.True(t, rep.IsMount(vol.Name))
 
 	volume2 := &volume.Volume{Name: "test2"}
-	rep.Create(volume2, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(volume2, &models.VolumeOptions{}))
 
 	assert.False(t, rep.IsMount(volume2.Name))
 }
@@ -260,7 +260,7 @@ func TestMountNegative(t *testing.T) {
 
 	vol := &volume.Volume{Name: "test"}
 
-	rep.Create(vol, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(vol, &models.VolumeOptions{}))
 
 	id := uuid.NewString()
 	err := rep.Mount(id, vol)
@@ -279,7 +279,7 @@ func TestUnmountSimple(t *testing.T) {
 
 	vol := &volume.Volume{Name: "test"}
 
-	rep.Create(vol, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(vol, &models.VolumeOptions{}))
 
 	id := uuid.NewString()
 
@@ -299,12 +299,12 @@ func TestUnmountNegative(t *testing.T) {
 
 	vol := &volume.Volume{Name: "test"}
 
-	rep.Create(vol, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(vol, &models.VolumeOptions{}))
 
 	id := uuid.NewString()
 
 	assert.Error(t, rep.Unmount(id, vol.Name))
-	rep.Mount(id, vol)
+	assert.Nil(t, rep.Mount(id, vol))
 
 	assert.Error(t, rep.Unmount(uuid.NewString(), vol.Name))
 }
@@ -316,13 +316,13 @@ func TestGetMountedIdsList(t *testing.T) {
 	rep := CreateInMemoryRepository(logger)
 	vol := &volume.Volume{Name: "test"}
 
-	rep.Create(vol, &models.VolumeOptions{})
+	assert.Nil(t, rep.Create(vol, &models.VolumeOptions{}))
 
 	id := uuid.NewString()
 
 	assert.Equal(t, 0, len(rep.GetMountedIdsList("test")))
 
-	rep.Mount(id, vol)
+	assert.Nil(t, rep.Mount(id, vol))
 	assert.Equal(t, 1, len(rep.GetMountedIdsList("test")))
 	assert.Equal(t, id, rep.GetMountedIdsList("test")[0])
 }
