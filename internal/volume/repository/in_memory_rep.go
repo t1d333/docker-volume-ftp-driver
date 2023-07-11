@@ -24,6 +24,9 @@ func CreateInMemoryRepository(logger *logrus.Logger) pkgVolume.VolumeRepository 
 }
 
 func (r *repository) Create(v *volume.Volume, opt *models.VolumeOptions) error {
+	if v == nil || opt == nil {
+		return errors.New("Volume or options is nil")
+	}
 	_, ok := r.volumes.LoadOrStore(v.Name, v)
 	if ok {
 		return errors.New("Volume arleady exists")
@@ -72,7 +75,7 @@ func (r *repository) Remove(name string) error {
 }
 
 func (r *repository) Path(name string) (string, error) {
-	tmp, ok := r.volumes.Load("name")
+	tmp, ok := r.volumes.Load(name)
 	if !ok {
 		return "", errors.New("Volume with this name not found")
 	}
