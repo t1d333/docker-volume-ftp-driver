@@ -1,4 +1,5 @@
 # Docker volume plugin for ftp
+![Coverage](https://img.shields.io/badge/Coverage-37.5%25-yellow)
 
 This plugin allows you to mount remotes directories from ftp server
 
