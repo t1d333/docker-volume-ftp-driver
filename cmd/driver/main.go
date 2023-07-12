@@ -4,6 +4,7 @@ import (
 	"os/user"
 	"strconv"
 
+	"github.com/sirupsen/logrus"
 	pkgLogger "github.com/t1d333/docker-volume-ftp-driver/pkg/logger"
 
 	"github.com/docker/go-plugins-helpers/volume"
@@ -17,6 +18,7 @@ func main() {
 	rep := repository.CreateInMemoryRepository(logger)
 	serv, err := service.CreateFTPService(rep, logger)
 	if err != nil {
+		logger.WithFields(logrus.Fields{"Error": err}).Fatal("Failed to create service")
 		return
 	}
 

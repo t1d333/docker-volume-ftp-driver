@@ -10,8 +10,8 @@ coverage: test
 	@go tool cover -func cover.out
 	
 clean:
-	@rm -rf ./plugin
-	@rm cover.out
+	@rm -rf ./plugin || true
+	@rm cover.out || true
 
 rootfs:
 	@docker build -t ${PLUGIN_NAME}:rootfs .

@@ -1,8 +1,10 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,10 +22,19 @@ const (
 	mountpoint = "/var/run/docker/ftp-driver/"
 )
 
+// errors
+
+var (
+	VolumeInfoFileNotFoundError  = errors.New("Volumes info file not found")
+	OptionsInfoFileNotFoundError = errors.New("Options info file not found")
+)
+
 type service struct {
-	rep        pkgVolume.VolumeRepository
-	logger     *logrus.Logger
-	mountpoint string
+	rep             pkgVolume.VolumeRepository
+	logger          *logrus.Logger
+	mountpoint      string
+	volumesInfoPath string
+	optionsInfoPath string
 }
 
 func getURL(opt models.FTPConnectionOpt) string {
@@ -31,19 +42,107 @@ func getURL(opt models.FTPConnectionOpt) string {
 }
 
 func CreateFTPService(rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
-	// logger.Info("Connecting to ftp server...")
-	// conn, err := ftp.Dial(getURL(opt), ftp.DialWithTimeout(5*time.Second))
-	// if err != nil {
-	// 	logger.WithField("Error", err).Error("Unable to connect to ftp server")
-	// 	return nil, errors.New("Unable to connect to ftp server")
-	// }
+	volumesPath := filepath.Join(mountpoint, "state", "volumes.json")
+	optionsPath := filepath.Join(mountpoint, "state", "options.json")
 
-	// if err := conn.Login(opt.User, opt.Password); err != nil {
-	// 	logger.WithField("Error", err).Error("Unable to connect to ftp server")
-	// 	return nil, errors.New("Unable to connect to ftp server. Failed authentication")
-	// }
+	if err := os.MkdirAll(filepath.Join(mountpoint, "state"), 0755); err != nil {
+		logger.WithFields(logrus.Fields{"Error": err}).Fatalf("Failed to create state directory")
+	}
 
-	return &service{logger: logger, rep: rep, mountpoint: mountpoint}, nil
+	serv := &service{logger: logger, rep: rep, mountpoint: mountpoint, volumesInfoPath: volumesPath, optionsInfoPath: optionsPath}
+	if err := serv.syncData(); err != nil {
+		if !errors.Is(err, VolumeInfoFileNotFoundError) && !errors.Is(err, OptionsInfoFileNotFoundError) {
+			return serv, err
+		}
+	}
+
+	return serv, nil
+}
+
+func (s *service) syncData() error {
+	volumes, options, err := s.readState()
+	if err != nil {
+		return err
+	}
+
+	for key, volume := range volumes {
+		opt, ok := options[key]
+		if ok {
+			s.rep.Create(&volume, &opt)
+		} else {
+			s.logger.Warnf("Failed to find options for volume %s", key)
+		}
+	}
+
+	return nil
+}
+
+func (s *service) readState() (map[string]volume.Volume, map[string]models.VolumeOptions, error) {
+	data, err := ioutil.ReadFile(s.volumesInfoPath)
+
+	volumes := make(map[string]volume.Volume, 0)
+	options := make(map[string]models.VolumeOptions, 0)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return volumes, options, VolumeInfoFileNotFoundError
+		} else {
+			return volumes, options, err
+		}
+	}
+
+	if err := json.Unmarshal(data, &volumes); err != nil {
+		return volumes, options, err
+	}
+
+	data, err = ioutil.ReadFile(s.optionsInfoPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return volumes, options, OptionsInfoFileNotFoundError
+		} else {
+			return volumes, options, err
+		}
+	}
+
+	if err := json.Unmarshal(data, &options); err != nil {
+		return volumes, options, err
+	}
+
+	return volumes, options, nil
+}
+
+func (s *service) saveState() error {
+	volumesList, _ := s.List()
+	volumesMap := make(map[string]volume.Volume)
+	optionsMap := make(map[string]models.VolumeOptions)
+
+	for _, vol := range volumesList {
+		volumesMap[vol.Name] = *vol
+		options := s.rep.GetVolumeOptions(vol.Name)
+		if options != nil {
+			optionsMap[vol.Name] = *options
+		}
+	}
+
+	volumesJson, err := json.Marshal(volumesMap)
+	if err != nil {
+		return err
+	}
+
+	optionsJson, err := json.Marshal(optionsMap)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(s.volumesInfoPath, volumesJson, 0644); err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(s.optionsInfoPath, optionsJson, 0644); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *service) Create(name string, opt map[string]string) error {
@@ -94,8 +193,6 @@ func (s *service) Create(name string, opt map[string]string) error {
 		return errors.New("Unable to connect to ftp server. Failed authentication")
 	}
 
-	ftpOpt.Conn = conn
-
 	vol := &volume.Volume{
 		Name:       name,
 		CreatedAt:  time.Now().Format(time.RFC3339Nano),
@@ -109,7 +206,15 @@ func (s *service) Create(name string, opt map[string]string) error {
 
 	// TODO: добавить обработку параметра remotepath, если каталог по remotepath не существует
 
-	return s.rep.Create(vol, volumeOpt)
+	if err := s.rep.Create(vol, volumeOpt); err != nil {
+		return err
+	}
+
+	if err := s.saveState(); err != nil {
+		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to update state data file")
+	}
+
+	return nil
 }
 
 func (s *service) List() ([]*volume.Volume, error) {
@@ -139,6 +244,10 @@ func (s *service) Remove(name string) error {
 	if err := os.RemoveAll(volume.Mountpoint); err != nil {
 		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to remove volume directory")
 		return err
+	}
+
+	if err := s.saveState(); err != nil {
+		s.logger.Error("Failed to update state data file")
 	}
 
 	return nil

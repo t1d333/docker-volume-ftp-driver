@@ -30,7 +30,20 @@
       }
     ]
   },
-  "Mounts": null,
+  "Mounts": [
+	{
+		"name": "state",
+		"destination": "/var/run/docker/ftp-driver/state",
+        "type": "bind",
+		"settable": [
+			"source"
+		],
+		"options": [
+			"rbind"	
+		],
+        "source": "/mnt/ftp_driver_state"
+	}	  
+  ],
   "Network": {
 	  "Type": "host"
   },

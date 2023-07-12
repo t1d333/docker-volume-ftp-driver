@@ -11,7 +11,7 @@ FROM ubuntu:latest
 RUN apt-get update && \
     apt-get -y install curlftpfs
 
-RUN mkdir -p /var/run/docker/ftp-driver/
+RUN mkdir -p /var/run/docker/ftp-driver/ /var/run/docker/ftp-driver/state
 
 WORKDIR /
 
