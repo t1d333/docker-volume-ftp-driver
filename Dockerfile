@@ -6,10 +6,11 @@ COPY . /ftp_driver
 
 RUN go build -o driver ./cmd/driver/main.go
 
-FROM ubuntu:latest
+FROM alpine
 
-RUN apt-get update && \
-    apt-get -y install curlftpfs
+RUN echo "@testing https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+	apk update && \
+    apk add curlftpfs@testing
 
 RUN mkdir -p /var/run/docker/ftp-driver/ /var/run/docker/ftp-driver/state
 
