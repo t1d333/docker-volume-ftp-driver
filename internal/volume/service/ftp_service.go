@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,7 +67,10 @@ func (s *service) syncData() error {
 	for key, volume := range volumes {
 		opt, ok := options[key]
 		if ok {
-			s.rep.Create(&volume, &opt)
+			if err := s.rep.Create(&volume, &opt); err != nil {
+				s.logger.Error("Failed to sync data")
+				return err
+			}
 		} else {
 			s.logger.Warnf("Failed to find options for volume %s", key)
 		}
@@ -78,7 +80,7 @@ func (s *service) syncData() error {
 }
 
 func (s *service) readState() (map[string]volume.Volume, map[string]models.VolumeOptions, error) {
-	data, err := ioutil.ReadFile(s.volumesInfoPath)
+	data, err := os.ReadFile(s.volumesInfoPath)
 
 	volumes := make(map[string]volume.Volume, 0)
 	options := make(map[string]models.VolumeOptions, 0)
@@ -95,7 +97,7 @@ func (s *service) readState() (map[string]volume.Volume, map[string]models.Volum
 		return volumes, options, err
 	}
 
-	data, err = ioutil.ReadFile(s.optionsInfoPath)
+	data, err = os.ReadFile(s.optionsInfoPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return volumes, options, OptionsInfoFileNotFoundError
