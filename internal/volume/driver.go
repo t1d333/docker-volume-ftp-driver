@@ -55,5 +55,6 @@ func (d *FTPDriver) Unmount(req *volume.UnmountRequest) error {
 
 func (d *FTPDriver) Capabilities() *volume.CapabilitiesResponse {
 	d.logger.Info("Capabilities request")
-	return nil
+	tmp := d.serv.Capabilities()
+	return &volume.CapabilitiesResponse{Capabilities: tmp}
 }
