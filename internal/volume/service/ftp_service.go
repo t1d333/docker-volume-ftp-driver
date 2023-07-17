@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,137 +13,28 @@ import (
 	"github.com/jlaffaye/ftp"
 	"github.com/sirupsen/logrus"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
+	"github.com/t1d333/docker-volume-ftp-driver/internal/statemngr"
 	pkgVolume "github.com/t1d333/docker-volume-ftp-driver/internal/volume"
 )
 
-const (
-	mountpoint = "/var/run/docker/ftp-driver/"
-)
-
-// errors
-
-var (
-	VolumeInfoFileNotFoundError  = errors.New("Volumes info file not found")
-	OptionsInfoFileNotFoundError = errors.New("Options info file not found")
-)
-
 type service struct {
-	rep             pkgVolume.VolumeRepository
-	logger          *logrus.Logger
-	mountpoint      string
-	volumesInfoPath string
-	optionsInfoPath string
+	rep        pkgVolume.VolumeRepository
+	mng        statemngr.StateManager
+	logger     *logrus.Logger
+	mountpoint string
 }
 
 func getURL(opt models.FTPConnectionOpt) string {
 	return fmt.Sprintf("%s:%d", opt.Host, opt.Port)
 }
 
-func CreateFTPService(rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
-	volumesPath := filepath.Join(mountpoint, "state", "volumes.json")
-	optionsPath := filepath.Join(mountpoint, "state", "options.json")
+func CreateFTPService(mountpoint string, mng statemngr.StateManager, rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
+	serv := &service{logger: logger, rep: rep, mountpoint: mountpoint, mng: mng}
 
-	if err := os.MkdirAll(filepath.Join(mountpoint, "state"), 0755); err != nil {
-		logger.WithFields(logrus.Fields{"Error": err}).Fatalf("Failed to create state directory")
+	if err := mng.SyncState(); err != nil {
+		return serv, err
 	}
-
-	serv := &service{logger: logger, rep: rep, mountpoint: mountpoint, volumesInfoPath: volumesPath, optionsInfoPath: optionsPath}
-	if err := serv.syncData(); err != nil {
-		if !errors.Is(err, VolumeInfoFileNotFoundError) && !errors.Is(err, OptionsInfoFileNotFoundError) {
-			return serv, err
-		}
-	}
-
 	return serv, nil
-}
-
-func (s *service) syncData() error {
-	volumes, options, err := s.readState()
-	if err != nil {
-		return err
-	}
-
-	for key, volume := range volumes {
-		opt, ok := options[key]
-		if ok {
-			if err := s.rep.Create(&volume, &opt); err != nil {
-				s.logger.Error("Failed to sync data")
-				return err
-			}
-		} else {
-			s.logger.Warnf("Failed to find options for volume %s", key)
-		}
-	}
-
-	return nil
-}
-
-func (s *service) readState() (map[string]volume.Volume, map[string]models.VolumeOptions, error) {
-	data, err := os.ReadFile(s.volumesInfoPath)
-
-	volumes := make(map[string]volume.Volume, 0)
-	options := make(map[string]models.VolumeOptions, 0)
-
-	if err != nil {
-		if os.IsNotExist(err) {
-			return volumes, options, VolumeInfoFileNotFoundError
-		} else {
-			return volumes, options, err
-		}
-	}
-
-	if err := json.Unmarshal(data, &volumes); err != nil {
-		return volumes, options, err
-	}
-
-	data, err = os.ReadFile(s.optionsInfoPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return volumes, options, OptionsInfoFileNotFoundError
-		} else {
-			return volumes, options, err
-		}
-	}
-
-	if err := json.Unmarshal(data, &options); err != nil {
-		return volumes, options, err
-	}
-
-	return volumes, options, nil
-}
-
-func (s *service) saveState() error {
-	volumesList, _ := s.List()
-	volumesMap := make(map[string]volume.Volume)
-	optionsMap := make(map[string]models.VolumeOptions)
-
-	for _, vol := range volumesList {
-		volumesMap[vol.Name] = *vol
-		options := s.rep.GetVolumeOptions(vol.Name)
-		if options != nil {
-			optionsMap[vol.Name] = *options
-		}
-	}
-
-	volumesJson, err := json.Marshal(volumesMap)
-	if err != nil {
-		return err
-	}
-
-	optionsJson, err := json.Marshal(optionsMap)
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(s.volumesInfoPath, volumesJson, 0644); err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(s.optionsInfoPath, optionsJson, 0644); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *service) Create(name string, opt map[string]string) error {
@@ -212,7 +102,7 @@ func (s *service) Create(name string, opt map[string]string) error {
 		return err
 	}
 
-	if err := s.saveState(); err != nil {
+	if err := s.mng.SaveState(); err != nil {
 		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to update state data file")
 	}
 
@@ -248,7 +138,7 @@ func (s *service) Remove(name string) error {
 		return err
 	}
 
-	if err := s.saveState(); err != nil {
+	if err := s.mng.SaveState(); err != nil {
 		s.logger.Error("Failed to update state data file")
 	}
 
