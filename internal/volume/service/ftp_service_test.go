@@ -77,6 +77,7 @@ func TestCreate(t *testing.T) {
 	statemngr.On("SyncState").Return(nil)
 	statemngr.On("SaveState").Return(nil)
 	ftpmngr.On("CheckConnection", mock.Anything).Return(nil).Once()
+	ftpmngr.On("CheckRemoteDir", mock.Anything, mock.Anything).Return(nil)
 
 	t.Run("succsess creation", func(t *testing.T) {
 		name := "volume"

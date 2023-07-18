@@ -26,6 +26,20 @@ func (_m *FTPManager) CheckConnection(opt *models.FTPConnectionOpt) error {
 	return r0
 }
 
+// CheckRemoteDir provides a mock function with given fields: remotepath, opt
+func (_m *FTPManager) CheckRemoteDir(remotepath string, opt *models.FTPConnectionOpt) error {
+	ret := _m.Called(remotepath, opt)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, *models.FTPConnectionOpt) error); ok {
+		r0 = rf(remotepath, opt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewFTPManager creates a new instance of FTPManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewFTPManager(t interface {

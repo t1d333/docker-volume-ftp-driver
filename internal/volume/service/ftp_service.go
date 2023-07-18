@@ -90,6 +90,10 @@ func (s *service) Create(name string, opt map[string]string) error {
 		return err
 	}
 
+	if err := s.ftpManager.CheckRemoteDir(path, &ftpOpt); err != nil {
+		return err
+	}
+
 	vol := &volume.Volume{
 		Name:       name,
 		CreatedAt:  time.Now().Format(time.RFC3339Nano),

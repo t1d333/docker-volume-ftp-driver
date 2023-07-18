@@ -3,7 +3,6 @@ package ftpmngr
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jlaffaye/ftp"
 	"github.com/sirupsen/logrus"
@@ -29,15 +28,36 @@ func NewFTPManager(logger *logrus.Logger) FTPManager {
 }
 
 func (mngr *ftpmngr) CheckConnection(opt *models.FTPConnectionOpt) error {
-	conn, err := ftp.Dial(getURL(opt), ftp.DialWithTimeout(5*time.Second))
+	_, err := mngr.getConnection(opt)
+	return err
+}
+
+func (mngr *ftpmngr) getConnection(opt *models.FTPConnectionOpt) (*ftp.ServerConn, error) {
+	conn, err := ftp.Dial(getURL(opt))
 	if err != nil {
 		mngr.logger.WithField("Error", err).Error("Unable to connect to ftp server")
-		return ConnectionError
+		return nil, ConnectionError
 	}
 
 	if err := conn.Login(opt.User, opt.Password); err != nil {
 		mngr.logger.WithField("Error", err).Error("Unable to connect to ftp server")
-		return AuthError
+		return nil, AuthError
+	}
+
+	return conn, nil
+}
+
+func (mngr *ftpmngr) CheckRemoteDir(remotepath string, opt *models.FTPConnectionOpt) error {
+	conn, err := mngr.getConnection(opt)
+	if err != nil {
+		mngr.logger.Debug(err)
+		return err
+	}
+
+	err = conn.ChangeDir(remotepath)
+	if err != nil {
+		mngr.logger.Debug(err)
+		return errors.New("Remote dir not found")
 	}
 
 	return nil
