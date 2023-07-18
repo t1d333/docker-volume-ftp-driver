@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/docker/go-plugins-helpers/volume"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -257,12 +258,299 @@ func TestList(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
+	logger := logrus.New()
+	logger.SetOutput(io.Discard)
+	ftpmngr := ftpMock.NewFTPManager(t)
+	mountmngr := mountMock.NewMountManager(t)
+	statemngr := stateMock.NewStateManager(t)
+	mountpoint := "/test"
+
+	inVolume := &volume.Volume{
+		Name:       "test",
+		Mountpoint: "/test/abc",
+		Status:     make(map[string]interface{}),
+		CreatedAt:  time.Now().Format(time.RFC3339Nano),
+	}
+
+	statemngr.On("SyncState").Return(nil)
+	statemngr.On("SaveState").Return(nil).Once()
+	mountmngr.On("Remove", inVolume).Return(nil).Once()
+
+	t.Run("succsess remove", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+		require.Nil(t, err)
+
+		err = serv.Remove("test")
+		assert.Nil(t, err)
+	})
+
+	t.Run("remove not exists volume", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		err = serv.Remove("notExists")
+		assert.Error(t, err)
+	})
+
+	t.Run("remove mounted volume", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		err = rep.Mount(uuid.NewString(), inVolume)
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		err = serv.Remove("test")
+		assert.Error(t, err)
+	})
+
+	mountmngr.On("Remove", mock.Anything).Return(errors.New("Unexpected")).Once()
+
+	t.Run("get error from mount manager", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		err = serv.Remove("test")
+
+		assert.Error(t, err)
+	})
+
+	statemngr.On("SaveState").Return(errors.New("Unexpected")).Once()
+	mountmngr.On("Remove", mock.Anything).Return(nil).Once()
+
+	t.Run("get error from mount manager", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		err = serv.Remove("test")
+
+		assert.Nil(t, err)
+	})
 }
 
 func TestMount(t *testing.T) {
+	logger := logrus.New()
+	logger.SetOutput(io.Discard)
+	ftpmngr := ftpMock.NewFTPManager(t)
+	mountmngr := mountMock.NewMountManager(t)
+	statemngr := stateMock.NewStateManager(t)
+	mountpoint := "/test"
+
+	inVolume := &volume.Volume{
+		Name:       "test",
+		Mountpoint: "/test/abc",
+		Status:     make(map[string]interface{}),
+		CreatedAt:  time.Now().Format(time.RFC3339Nano),
+	}
+
+	statemngr.On("SyncState").Return(nil)
+
+	mountmngr.On("Mount", mock.Anything, mock.Anything).Return(inVolume.Mountpoint, nil).Once()
+
+	t.Run("succsess mount", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		path, err := serv.Mount(uuid.NewString(), "test")
+
+		assert.Nil(t, err)
+		assert.Equal(t, inVolume.Mountpoint, path)
+	})
+
+	t.Run("mount already mounted volume", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		err = rep.Mount(uuid.NewString(), inVolume)
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		path, err := serv.Mount(uuid.NewString(), "test")
+
+		assert.Nil(t, err)
+
+		assert.Equal(t, inVolume.Mountpoint, path)
+	})
+
+	mountmngr.On("Mount", mock.Anything, mock.Anything).Return(inVolume.Mountpoint, errors.New("Unexpected")).Once()
+
+	t.Run("get error from mount manager", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		_, err = serv.Mount(uuid.NewString(), "test")
+
+		assert.Error(t, err)
+	})
+
+	t.Run("mount not exists volume", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		_, err = serv.Mount(uuid.NewString(), "test")
+
+		assert.Error(t, err)
+	})
 }
 
 func TestUnmount(t *testing.T) {
+	logger := logrus.New()
+	logger.SetOutput(io.Discard)
+	ftpmngr := ftpMock.NewFTPManager(t)
+	mountmngr := mountMock.NewMountManager(t)
+	statemngr := stateMock.NewStateManager(t)
+	mountpoint := "/test"
+	id := uuid.NewString()
+
+	inVolume := &volume.Volume{
+		Name:       "test",
+		Mountpoint: "/test/abc",
+		Status:     make(map[string]interface{}),
+		CreatedAt:  time.Now().Format(time.RFC3339Nano),
+	}
+
+	statemngr.On("SyncState").Return(nil)
+
+	mountmngr.On("Unmount", mock.Anything).Return(nil).Once()
+
+	t.Run("succsess unmount", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		err = rep.Mount(id, inVolume)
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		err = serv.Unmount(id, inVolume.Name)
+
+		assert.Nil(t, err)
+	})
+
+	t.Run("unmount not exists volume", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		err = serv.Unmount(id, inVolume.Name)
+
+		assert.Error(t, err)
+	})
+
+	t.Run("unmount not mounted volume", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		err = serv.Unmount(id, inVolume.Name)
+
+		assert.Error(t, err)
+	})
+
+	t.Run("twice mount one volume", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		id2 := uuid.NewString()
+
+		err = rep.Mount(id, inVolume)
+
+		require.Nil(t, err)
+
+		err = rep.Mount(id2, inVolume)
+
+		require.Nil(t, err)
+
+		err = serv.Unmount(id, inVolume.Name)
+
+		require.Nil(t, err)
+
+		assert.True(t, rep.IsMount(inVolume.Name))
+	})
+
+	mountmngr.On("Unmount", mock.Anything).Return(errors.New("Unexpected"))
+
+	t.Run("get error from mount manager", func(t *testing.T) {
+		rep := repository.CreateInMemoryRepository(logger)
+
+		err := rep.Create(inVolume, &models.VolumeOptions{})
+
+		require.Nil(t, err)
+
+		err = rep.Mount(id, inVolume)
+
+		require.Nil(t, err)
+
+		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
+
+		err = serv.Unmount(id, inVolume.Name)
+
+		require.Error(t, err)
+	})
 }
 
 func TestPath(t *testing.T) {

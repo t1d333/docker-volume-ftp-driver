@@ -171,7 +171,6 @@ func (s *service) Mount(id, name string) (string, error) {
 	opt := s.rep.GetVolumeOptions(volume.Name)
 
 	path, err := s.mountManager.Mount(volume, opt)
-	
 	if err != nil {
 		return path, err
 	}
@@ -194,7 +193,6 @@ func (s *service) Unmount(id, name string) error {
 	}
 
 	if list := s.rep.GetMountedIdsList(name); len(list) != 0 {
-		s.logger.Info("Mounted list", list)
 		return nil
 	}
 
