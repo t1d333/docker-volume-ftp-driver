@@ -31,7 +31,7 @@ $ make enable
 Options
 
 - `host` - host name or IP address of the ftp server
-- `user` - username authentication
+- `user` - username for authentication
 - `password` - password for authentication
 - `port` - port for connection
 - `remotepath` - path on ftp server for mount. The path must be **_absolute_** and **_start with a /_**
