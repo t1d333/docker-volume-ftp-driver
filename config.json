@@ -41,7 +41,7 @@
 		"options": [
 			"rbind"	
 		],
-        "source": "/mnt/ftp_driver_state"
+		"source": "/var/lib/docker/plugins/"
 	}	  
   ],
   "Network": {
