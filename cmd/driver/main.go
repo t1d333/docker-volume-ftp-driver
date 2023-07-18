@@ -8,6 +8,8 @@ import (
 	pkgLogger "github.com/t1d333/docker-volume-ftp-driver/pkg/logger"
 
 	"github.com/docker/go-plugins-helpers/volume"
+	"github.com/t1d333/docker-volume-ftp-driver/internal/ftpmngr"
+	"github.com/t1d333/docker-volume-ftp-driver/internal/mountmngr"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/statemngr"
 	pkgVolume "github.com/t1d333/docker-volume-ftp-driver/internal/volume"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/volume/repository"
@@ -21,8 +23,14 @@ const (
 func main() {
 	logger := pkgLogger.InitializeNewLogger()
 	rep := repository.CreateInMemoryRepository(logger)
-	mng, err := statemngr.NewStateManager(mountpoint, rep)
-	serv, err := service.CreateFTPService(mountpoint, mng, rep, logger)
+	stateManager, err := statemngr.NewStateManager(mountpoint, logger, rep)
+	if err != nil {
+		logger.WithFields(logrus.Fields{"Error": err}).Fatal("Failed to create state manager")
+		return
+	}
+	ftpManager := ftpmngr.NewFTPManager(logger)
+	mountManager := mountmngr.NewMountManager(logger)
+	serv, err := service.CreateFTPService(mountpoint, ftpManager, mountManager, stateManager, rep, logger)
 	if err != nil {
 		logger.WithFields(logrus.Fields{"Error": err}).Fatal("Failed to create service")
 		return

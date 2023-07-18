@@ -73,7 +73,7 @@ func TestGet(t *testing.T) {
 	expectedErr := errors.New("Failed to get volume")
 
 	t.Run("Failed get", func(t *testing.T) {
-		mockServ.On("Get", mock.Anything).Return(nil, expectedErr)
+		mockServ.On("Get", mock.Anything).Return(nil, expectedErr).Once()
 		driver := InitializeNewFTPDriver(mockServ, logger)
 
 		_, err := driver.Get(&volume.GetRequest{Name: "test"})

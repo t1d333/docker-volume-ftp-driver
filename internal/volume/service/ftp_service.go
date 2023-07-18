@@ -3,37 +3,49 @@ package service
 import (
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/docker/go-plugins-helpers/volume"
-	"github.com/jlaffaye/ftp"
 	"github.com/sirupsen/logrus"
+	"github.com/t1d333/docker-volume-ftp-driver/internal/ftpmngr"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
+	"github.com/t1d333/docker-volume-ftp-driver/internal/mountmngr"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/statemngr"
 	pkgVolume "github.com/t1d333/docker-volume-ftp-driver/internal/volume"
 )
 
 type service struct {
-	rep        pkgVolume.VolumeRepository
-	mng        statemngr.StateManager
-	logger     *logrus.Logger
-	mountpoint string
+	rep          pkgVolume.VolumeRepository
+	stateManager statemngr.StateManager
+	mountManager mountmngr.MountManager
+	ftpManager   ftpmngr.FTPManager
+	logger       *logrus.Logger
+	mountpoint   string
 }
 
-func getURL(opt models.FTPConnectionOpt) string {
-	return fmt.Sprintf("%s:%d", opt.Host, opt.Port)
-}
-
-func CreateFTPService(mountpoint string, mng statemngr.StateManager, rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
-	serv := &service{logger: logger, rep: rep, mountpoint: mountpoint, mng: mng}
-
-	if err := mng.SyncState(); err != nil {
-		return serv, err
+func CreateFTPService(mountpoint string, ftpManager ftpmngr.FTPManager, mountManager mountmngr.MountManager, stateManager statemngr.StateManager, rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
+	serv := &service{
+		logger:       logger,
+		rep:          rep,
+		mountpoint:   mountpoint,
+		stateManager: stateManager,
+		mountManager: mountManager,
+		ftpManager:   ftpManager,
 	}
+
+	if err := stateManager.SyncState(); err != nil {
+		switch {
+		case errors.Is(statemngr.OptionsInfoFileNotFoundError, err):
+			return serv, nil
+		case errors.Is(statemngr.VolumeInfoFileNotFoundError, err):
+			return serv, nil
+		default:
+			return serv, err
+		}
+	}
+
 	return serv, nil
 }
 
@@ -74,15 +86,8 @@ func (s *service) Create(name string, opt map[string]string) error {
 		ftpOpt.Password = password
 	}
 
-	conn, err := ftp.Dial(getURL(ftpOpt), ftp.DialWithTimeout(5*time.Second))
-	if err != nil {
-		s.logger.WithField("Error", err).Error("Unable to connect to ftp server")
-		return errors.New("Unable to connect to ftp server")
-	}
-
-	if err := conn.Login(ftpOpt.User, ftpOpt.Password); err != nil {
-		s.logger.WithField("Error", err).Error("Unable to connect to ftp server")
-		return errors.New("Unable to connect to ftp server. Failed authentication")
+	if err := s.ftpManager.CheckConnection(&ftpOpt); err != nil {
+		return err
 	}
 
 	vol := &volume.Volume{
@@ -102,7 +107,7 @@ func (s *service) Create(name string, opt map[string]string) error {
 		return err
 	}
 
-	if err := s.mng.SaveState(); err != nil {
+	if err := s.stateManager.SaveState(); err != nil {
 		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to update state data file")
 	}
 
@@ -133,12 +138,12 @@ func (s *service) Remove(name string) error {
 		return err
 	}
 
-	if err := os.RemoveAll(volume.Mountpoint); err != nil {
-		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to remove volume directory")
+	if err := s.mountManager.Remove(volume); err != nil {
+		s.logger.WithFields(logrus.Fields{"Error": err})
 		return err
 	}
 
-	if err := s.mng.SaveState(); err != nil {
+	if err := s.stateManager.SaveState(); err != nil {
 		s.logger.Error("Failed to update state data file")
 	}
 
@@ -163,22 +168,15 @@ func (s *service) Mount(id, name string) (string, error) {
 		return "", err
 	}
 
-	if err := os.MkdirAll(volume.Mountpoint, 0755); err != nil {
-		s.logger.WithField("Error", err).Error("Failed to create mount point")
-		return "", errors.New("Failed to create mount point")
-	}
-
 	opt := s.rep.GetVolumeOptions(volume.Name)
 
-	ftpPath := fmt.Sprintf("%s:%d%s", opt.Host, opt.Port, opt.RemotePath)
-
-	cmd := exec.Command("curlftpfs", ftpPath, volume.Mountpoint, "-o", fmt.Sprintf("user=%s:%s", opt.User, opt.Password), "-o", "nonempty")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		s.logger.WithFields(logrus.Fields{"Error": err, "Out": string(out)}).Error("Failed to mount directory")
-		return "", errors.New("Failed to mount directory")
+	path, err := s.mountManager.Mount(volume, opt)
+	
+	if err != nil {
+		return path, err
 	}
 
-	return volume.Mountpoint, nil
+	return path, nil
 }
 
 func (s *service) Unmount(id, name string) error {
@@ -200,15 +198,8 @@ func (s *service) Unmount(id, name string) error {
 		return nil
 	}
 
-	cmd := exec.Command("umount", volume.Mountpoint)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		s.logger.WithFields(logrus.Fields{"Error": err, "Out": string(out)}).Error("Failed to unmount directory")
-		return errors.New("Failed to unmount directory")
-	}
-
-	if err := os.RemoveAll(volume.Mountpoint); err != nil {
-		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to remove mounted directory")
-		return errors.New("Failed to remove mounted directory")
+	if err := s.mountManager.Unmount(volume); err != nil {
+		return err
 	}
 
 	return nil

@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 
 	"github.com/docker/go-plugins-helpers/volume"
+	"github.com/sirupsen/logrus"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
 	pkgVolume "github.com/t1d333/docker-volume-ftp-driver/internal/volume"
 )
 
 type statemanager struct {
 	rep             pkgVolume.VolumeRepository
+	logger          *logrus.Logger
 	mountpoint      string
 	volumesInfoPath string
 	optionsInfoPath string
@@ -25,14 +27,20 @@ var (
 	OptionsInfoFileNotFoundError = errors.New("Options info file not found")
 )
 
-func NewStateManager(mountpoint string, rep pkgVolume.VolumeRepository) (StateManager, error) {
+func NewStateManager(mountpoint string, logger *logrus.Logger, rep pkgVolume.VolumeRepository) (StateManager, error) {
 	volumesPath := filepath.Join(mountpoint, "state", "volumes.json")
 	optionsPath := filepath.Join(mountpoint, "state", "options.json")
 	if err := os.MkdirAll(filepath.Join(mountpoint, "state"), 0755); err != nil {
 		return nil, err
 	}
 
-	return &statemanager{rep: rep, mountpoint: mountpoint, volumesInfoPath: volumesPath, optionsInfoPath: optionsPath}, nil
+	return &statemanager{
+		rep:             rep,
+		mountpoint:      mountpoint,
+		volumesInfoPath: volumesPath,
+		optionsInfoPath: optionsPath,
+		logger:          logger,
+	}, nil
 }
 
 func (mng *statemanager) SyncState() error {

@@ -4,14 +4,17 @@ PLUGIN_NAME = t1d333/ftp-driver
 all: clean rootfs create
 
 test:
-	@go test ./... -coverprofile cover.out
+	@go test -v -coverpkg=./... -coverprofile=profile.cov ./...
+
+lint:
+	@golangci-lint run ./...
 
 coverage: test
-	@go tool cover -func cover.out
+	@go tool cover -func profile.cov
 	
 clean:
 	@rm -rf ./plugin || true
-	@rm cover.out || true
+	@rm profile.cov || true
 
 rootfs:
 	@docker build -t ${PLUGIN_NAME}:rootfs .
