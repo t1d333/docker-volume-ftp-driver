@@ -25,5 +25,4 @@ go.work
 plugin/
 
 # coverage
-
-coverage.out
+cover.out
