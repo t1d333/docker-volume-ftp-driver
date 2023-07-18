@@ -327,6 +327,8 @@ func TestRemove(t *testing.T) {
 
 		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
 
+		require.Nil(t, err)
+
 		err = serv.Remove("test")
 
 		assert.Error(t, err)
@@ -342,6 +344,8 @@ func TestRemove(t *testing.T) {
 		require.Nil(t, err)
 
 		serv, err := CreateFTPService(mountpoint, ftpmngr, mountmngr, statemngr, rep, logger)
+
+		require.Nil(t, err)
 
 		err = serv.Remove("test")
 
