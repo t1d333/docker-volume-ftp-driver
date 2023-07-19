@@ -19,8 +19,10 @@ or using GitHub
 # clone repository
 $ git clone https://github.com/t1d333/docker-volume-ftp-driver.github
 
+$ cd docker-volume-ftp-driver
+
 # build plugin
-$ make github
+$ make
 
 # enable plugin
 $ make enable
