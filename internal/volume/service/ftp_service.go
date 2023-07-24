@@ -105,8 +105,6 @@ func (s *service) Create(name string, opt map[string]string) error {
 		FTPConnectionOpt: ftpOpt,
 	}
 
-	// TODO: добавить обработку параметра remotepath, если каталог по remotepath не существует
-
 	if err := s.rep.Create(vol, volumeOpt); err != nil {
 		return err
 	}
