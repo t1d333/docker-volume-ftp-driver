@@ -132,16 +132,16 @@ func (r *repository) Unmount(id, name string) error {
 
 func (r *repository) GetMountedIdsList(name string) []string {
 	ids, ok := r.mountedVolumes.Load(name)
-	if ok {
-		ids := ids.(*sync.Map)
-		list := make([]string, 0)
-
-		ids.Range(func(key, value any) bool {
-			list = append(list, key.(string))
-			return true
-		})
-		return list
+	if !ok {
+		return []string{}
 	}
 
-	return []string{}
+	idsMap := ids.(*sync.Map)
+	list := make([]string, 0)
+
+	idsMap.Range(func(key, value any) bool {
+		list = append(list, key.(string))
+		return true
+	})
+	return list
 }
