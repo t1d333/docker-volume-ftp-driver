@@ -65,3 +65,17 @@ jobs:
         with:
           github_token: ${{ secrets.TOKEN }}
           branch: ${{ github.head_ref }}
+  delivery:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: rootfs
+        run: make
+      - name: login docker hub
+        run: docker login -p ${{secrets.DOCKER_PASSWORD}} -u t1d333
+      - name: push plugin
+        run: docker plugin push t1d333/ftp-driver:latest
