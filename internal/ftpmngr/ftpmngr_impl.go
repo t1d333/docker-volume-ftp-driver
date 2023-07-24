@@ -28,7 +28,8 @@ func NewFTPManager(logger *logrus.Logger) FTPManager {
 }
 
 func (mngr *ftpmngr) CheckConnection(opt *models.FTPConnectionOpt) error {
-	_, err := mngr.getConnection(opt)
+	conn, err := mngr.getConnection(opt)
+	conn.Quit()
 	return err
 }
 
@@ -49,6 +50,7 @@ func (mngr *ftpmngr) getConnection(opt *models.FTPConnectionOpt) (*ftp.ServerCon
 
 func (mngr *ftpmngr) CheckRemoteDir(remotepath string, opt *models.FTPConnectionOpt) error {
 	conn, err := mngr.getConnection(opt)
+	defer conn.Quit()
 	if err != nil {
 		mngr.logger.Debug(err)
 		return err
