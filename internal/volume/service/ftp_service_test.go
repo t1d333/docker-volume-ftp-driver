@@ -349,7 +349,7 @@ func TestRemove(t *testing.T) {
 	statemngr.On("SaveState").Return(errors.New("Unexpected")).Once()
 	mountmngr.On("Remove", mock.Anything).Return(nil).Once()
 
-	t.Run("get error from mount manager", func(t *testing.T) {
+	t.Run("get error from state manager", func(t *testing.T) {
 		rep := repository.CreateInMemoryRepository(logger)
 		err := rep.Create(inVolume, &models.VolumeOptions{})
 
@@ -361,7 +361,7 @@ func TestRemove(t *testing.T) {
 
 		err = serv.Remove("test")
 
-		assert.Nil(t, err)
+		assert.Error(t, err)
 	})
 }
 

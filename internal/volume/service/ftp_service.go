@@ -87,11 +87,11 @@ func (s *service) Create(name string, opt map[string]string) error {
 	}
 
 	if err := s.ftpManager.CheckConnection(&ftpOpt); err != nil {
-		return err
+		return fmt.Errorf("failed to ftpManager.CheckConnection in service.Create: %w", err)
 	}
 
 	if err := s.ftpManager.CheckRemoteDir(path, &ftpOpt); err != nil {
-		return err
+		return fmt.Errorf("failed to ftpManager.CheckRemoteDir in service.Create: %w", err)
 	}
 
 	vol := &volume.Volume{
@@ -106,7 +106,7 @@ func (s *service) Create(name string, opt map[string]string) error {
 	}
 
 	if err := s.rep.Create(vol, volumeOpt); err != nil {
-		return err
+		return fmt.Errorf("failed to repository.Create in service.Create: %w", err)
 	}
 
 	if err := s.stateManager.SaveState(); err != nil {
@@ -128,7 +128,8 @@ func (s *service) Remove(name string) error {
 	volume, err := s.rep.Get(name)
 	if err != nil {
 		s.logger.Errorf("failed to get volume for remove with name: %s, err : %s", name, err.Error())
-		return err
+
+		return fmt.Errorf("failed repository.Get in service.Remove: %w", err)
 	}
 
 	if isMount := s.rep.IsMount(name); isMount {
@@ -137,15 +138,15 @@ func (s *service) Remove(name string) error {
 	}
 
 	if err := s.rep.Remove(name); err != nil {
-		return err
+		return fmt.Errorf("failed repository.Remove in service.Remove: %w", err)
 	}
 
 	if err := s.mountManager.Remove(volume); err != nil {
-		return err
+		return fmt.Errorf("failed mountmngr.Remove in service.Remove: %w", err)
 	}
 
 	if err := s.stateManager.SaveState(); err != nil {
-		s.logger.Errorf("failed to update state data file: %s", err.Error())
+		return fmt.Errorf("failed statemngr.SaveState in service.Remove: %w", err)
 	}
 
 	return nil
@@ -158,7 +159,7 @@ func (s *service) Path(name string) (string, error) {
 func (s *service) Mount(id, name string) (string, error) {
 	volume, err := s.Get(name)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed service.Get in service.Mount: %w", err)
 	}
 
 	if s.rep.IsMount(volume.Name) {
@@ -166,14 +167,14 @@ func (s *service) Mount(id, name string) (string, error) {
 	}
 
 	if err := s.rep.Mount(id, volume); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed repository.Mount in service.Mount: %w", err)
 	}
 
 	opt := s.rep.GetVolumeOptions(volume.Name)
 
 	path, err := s.mountManager.Mount(volume, opt)
 	if err != nil {
-		return path, err
+		return path, fmt.Errorf("failed mountmngr.Mount in service.Mount: %w", err)
 	}
 
 	return path, nil
@@ -182,7 +183,7 @@ func (s *service) Mount(id, name string) (string, error) {
 func (s *service) Unmount(id, name string) error {
 	volume, err := s.Get(name)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed service.Get in service.Unmount: %w", err)
 	}
 
 	if !s.rep.IsMount(volume.Name) {
@@ -190,7 +191,7 @@ func (s *service) Unmount(id, name string) error {
 	}
 
 	if err := s.rep.Unmount(id, name); err != nil {
-		return err
+		return fmt.Errorf("failed repository.Unmount in service.Unmount: %w", err)
 	}
 
 	if list := s.rep.GetMountedIdsList(name); len(list) != 0 {
@@ -198,7 +199,7 @@ func (s *service) Unmount(id, name string) error {
 	}
 
 	if err := s.mountManager.Unmount(volume); err != nil {
-		return err
+		return fmt.Errorf("failed mountmngr.Mount in service.Mount: %w", err)
 	}
 
 	return nil

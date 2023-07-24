@@ -13,12 +13,6 @@ type ftpmngr struct {
 	logger pkgLogger.Logger
 }
 
-// errors
-var (
-	ConnectionError = errors.New("Unable to connect to ftp server")
-	AuthError       = errors.New("Unable to connect to ftp server. Failed authentication")
-)
-
 func getURL(opt *models.FTPConnectionOpt) string {
 	return fmt.Sprintf("%s:%d", opt.Host, opt.Port)
 }
@@ -31,22 +25,25 @@ func (mngr *ftpmngr) CheckConnection(opt *models.FTPConnectionOpt) error {
 	conn, err := mngr.getConnection(opt)
 	if err == nil {
 		if err := conn.Quit(); err != nil {
-			mngr.logger.Errorf("Failed to close ftp connection: %s", err.Error())
+			mngr.logger.Errorf("failed to close ftp connection: %s", err.Error())
 		}
+	} else {
+		return fmt.Errorf("failed to connect to ftp server: %w", err)
 	}
-	return err
+
+	return nil
 }
 
 func (mngr *ftpmngr) getConnection(opt *models.FTPConnectionOpt) (*ftp.ServerConn, error) {
 	conn, err := ftp.Dial(getURL(opt))
 	if err != nil {
-		mngr.logger.Errorf("Unable to connect to ftp server: %s", err.Error())
-		return nil, ConnectionError
+		mngr.logger.Errorf("unable to connect to ftp server: %s", err.Error())
+		return nil, fmt.Errorf("unable to connect to ftp server in ftpmngr.getConnection: %w", err)
 	}
 
 	if err := conn.Login(opt.User, opt.Password); err != nil {
-		mngr.logger.Errorf("Unable to login to ftp server: %s", err.Error())
-		return nil, AuthError
+		mngr.logger.Errorf("unable to login to ftp server: %s", err.Error())
+		return nil, fmt.Errorf("unable to login to ftp server in ftpmngr.getConnection: %w", err)
 	}
 
 	return conn, nil
@@ -55,19 +52,19 @@ func (mngr *ftpmngr) getConnection(opt *models.FTPConnectionOpt) (*ftp.ServerCon
 func (mngr *ftpmngr) CheckRemoteDir(remotepath string, opt *models.FTPConnectionOpt) error {
 	conn, err := mngr.getConnection(opt)
 	if err != nil {
-		mngr.logger.Errorf("Unable to check remote dir: %s", err.Error())
-		return err
+		mngr.logger.Errorf("unable to check remote dir: %s", err.Error())
+		return fmt.Errorf("unable to connect to ftp server in ftpmngr.CheckRemoteDir: %w", err)
 	}
 
 	err = conn.ChangeDir(remotepath)
 	if err != nil {
-		mngr.logger.Errorf("Unable to find remote dir: %s", err.Error())
-		return errors.New("Remote dir not found")
+		mngr.logger.Errorf("unable to find remote dir: %s", err.Error())
+		return errors.New("remote dir not found")
 	}
 
 	if err := conn.Quit(); err != nil {
 		mngr.logger.Errorf("Failed to close ftp connection: %s", err.Error())
 	}
-	
+
 	return nil
 }
