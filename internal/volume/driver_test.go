@@ -7,18 +7,20 @@ import (
 
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/volume/mocks"
+	"go.uber.org/zap"
 )
 
 func TestCreate(t *testing.T) {
 	mockServ := mocks.NewVolumeService(t)
 	name := "test"
 	options := make(map[string]string, 0)
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	t.Run("Success creation", func(t *testing.T) {
 		mockServ.On("Create", name, options).Return(nil).Once()
@@ -46,8 +48,11 @@ func TestGet(t *testing.T) {
 	mockServ := mocks.NewVolumeService(t)
 	name := "test"
 	date := time.Now().Format(time.RFC3339Nano)
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	expected := &volume.Volume{
 		Name:       "test",
@@ -84,8 +89,10 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	mockServ := mocks.NewVolumeService(t)
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	expectedList := make([]*volume.Volume, 0)
 
@@ -116,8 +123,12 @@ func TestList(t *testing.T) {
 
 func TestPath(t *testing.T) {
 	mockServ := mocks.NewVolumeService(t)
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	volumeName := "test"
 	expectedPath := "/test/test1"
 
@@ -148,8 +159,11 @@ func TestPath(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	mockServ := mocks.NewVolumeService(t)
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	volumeName := "test"
 
 	t.Run("Success remove", func(t *testing.T) {
@@ -177,8 +191,11 @@ func TestRemove(t *testing.T) {
 
 func TestMount(t *testing.T) {
 	mockServ := mocks.NewVolumeService(t)
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	volumeName := "test"
 	expectedPath := "/test/test1"
 	id := uuid.NewString()
@@ -210,8 +227,11 @@ func TestMount(t *testing.T) {
 
 func TestUnmount(t *testing.T) {
 	mockServ := mocks.NewVolumeService(t)
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	volumeName := "test"
 	id := uuid.NewString()
 
@@ -240,8 +260,11 @@ func TestUnmount(t *testing.T) {
 
 func TestCapabilities(t *testing.T) {
 	mockServ := mocks.NewVolumeService(t)
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	expected := volume.Capability{Scope: "local"}
 
 	t.Run("Success get capabilities ", func(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"os/user"
 	"strconv"
 
-	"github.com/sirupsen/logrus"
 	pkgLogger "github.com/t1d333/docker-volume-ftp-driver/pkg/logger"
 
 	"github.com/docker/go-plugins-helpers/volume"
@@ -21,18 +20,19 @@ const (
 )
 
 func main() {
-	logger := pkgLogger.InitializeNewLogger()
+	logger := pkgLogger.NewLogger()
 	rep := repository.CreateInMemoryRepository(logger)
+
 	stateManager, err := statemngr.NewStateManager(mountpoint, logger, rep)
 	if err != nil {
-		logger.WithFields(logrus.Fields{"Error": err}).Fatal("Failed to create state manager")
+		logger.Fatalf("failed to create state manager: %s", err.Error())
 		return
 	}
 	ftpManager := ftpmngr.NewFTPManager(logger)
 	mountManager := mountmngr.NewMountManager(logger)
 	serv, err := service.CreateFTPService(mountpoint, ftpManager, mountManager, stateManager, rep, logger)
 	if err != nil {
-		logger.WithFields(logrus.Fields{"Error": err}).Fatal("Failed to create service")
+		logger.Fatalf("failed to create service: %s", err.Error())
 		return
 	}
 
@@ -41,8 +41,8 @@ func main() {
 	u, _ := user.Lookup("root")
 	gid, _ := strconv.Atoi(u.Gid)
 
-	logger.Info("Serve unix")
+	logger.Info("serve unix")
 	if err := handler.ServeUnix("ftp-driver", gid); err != nil {
-		logger.WithField("Error", err).Fatal("Can't start plugin")
+		logger.Fatalf("can't start plugin: %s", err.Error())
 	}
 }

@@ -2,15 +2,14 @@ package repository
 
 import (
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
+	"go.uber.org/zap"
 )
 
 var GetTestsSimple = map[string]struct {
@@ -73,8 +72,11 @@ var ListTests = map[string]struct {
 }
 
 func TestGetSimple(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	rep := CreateInMemoryRepository(logger)
 	for name, test := range GetTestsSimple {
 		err := rep.Create(&test.expected, &models.VolumeOptions{})
@@ -92,8 +94,11 @@ func TestGetSimple(t *testing.T) {
 }
 
 func TestGetNegative(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	rep := CreateInMemoryRepository(logger)
 	for name, test := range GetTestsNegative {
 		err := rep.Create(test.in, &models.VolumeOptions{})
@@ -105,8 +110,11 @@ func TestGetNegative(t *testing.T) {
 }
 
 func TestCreateNegative(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	rep := CreateInMemoryRepository(logger)
 	for name, test := range CreateTestsNegative {
 		err := rep.Create(test.vol, test.opt)
@@ -115,8 +123,11 @@ func TestCreateNegative(t *testing.T) {
 }
 
 func TestCreateExistsVol(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	rep := CreateInMemoryRepository(logger)
 	vol := &volume.Volume{Name: "test"}
 	err := rep.Create(vol, &models.VolumeOptions{})
@@ -125,8 +136,11 @@ func TestCreateExistsVol(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	for name, test := range ListTests {
 		rep := CreateInMemoryRepository(logger)
 		for _, volume := range test.in {
@@ -154,8 +168,10 @@ func TestList(t *testing.T) {
 }
 
 func TestGetOptionsSimpe(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	rep := CreateInMemoryRepository(logger)
 
@@ -177,8 +193,10 @@ func TestGetOptionsSimpe(t *testing.T) {
 }
 
 func TestPathSimple(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	rep := CreateInMemoryRepository(logger)
 	path := "/mnt/test"
@@ -190,8 +208,10 @@ func TestPathSimple(t *testing.T) {
 }
 
 func TestPathNegative(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	rep := CreateInMemoryRepository(logger)
 	_, err := rep.Path("abcde")
@@ -199,8 +219,11 @@ func TestPathNegative(t *testing.T) {
 }
 
 func TestRemoveSimple(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	rep := CreateInMemoryRepository(logger)
 	volume := &volume.Volume{Name: "test"}
 	assert.Nil(t, rep.Create(volume, &models.VolumeOptions{}))
@@ -211,16 +234,22 @@ func TestRemoveSimple(t *testing.T) {
 }
 
 func TestRemoveNotExistingVolume(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	rep := CreateInMemoryRepository(logger)
 	err := rep.Remove("not exists")
 	assert.Error(t, err, "Removing not existing volume")
 }
 
 func TestRemoveMountedVolume(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	rep := CreateInMemoryRepository(logger)
 
 	volume := &volume.Volume{Name: "test"}
@@ -233,8 +262,10 @@ func TestRemoveMountedVolume(t *testing.T) {
 }
 
 func TestMountSimple(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	rep := CreateInMemoryRepository(logger)
 
@@ -254,8 +285,10 @@ func TestMountSimple(t *testing.T) {
 }
 
 func TestMountNegative(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	rep := CreateInMemoryRepository(logger)
 
@@ -273,8 +306,10 @@ func TestMountNegative(t *testing.T) {
 }
 
 func TestUnmountSimple(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	rep := CreateInMemoryRepository(logger)
 
@@ -293,8 +328,10 @@ func TestUnmountSimple(t *testing.T) {
 }
 
 func TestUnmountNegative(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	rep := CreateInMemoryRepository(logger)
 
@@ -311,8 +348,10 @@ func TestUnmountNegative(t *testing.T) {
 }
 
 func TestGetMountedIdsList(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
 
 	rep := CreateInMemoryRepository(logger)
 	vol := &volume.Volume{Name: "test"}

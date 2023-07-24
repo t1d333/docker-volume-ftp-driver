@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/docker/go-plugins-helpers/volume"
-	"github.com/sirupsen/logrus"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/ftpmngr"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/mountmngr"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/statemngr"
 	pkgVolume "github.com/t1d333/docker-volume-ftp-driver/internal/volume"
+	pkgLogger "github.com/t1d333/docker-volume-ftp-driver/pkg/logger"
 )
 
 type service struct {
@@ -21,11 +21,11 @@ type service struct {
 	stateManager statemngr.StateManager
 	mountManager mountmngr.MountManager
 	ftpManager   ftpmngr.FTPManager
-	logger       *logrus.Logger
+	logger       pkgLogger.Logger
 	mountpoint   string
 }
 
-func CreateFTPService(mountpoint string, ftpManager ftpmngr.FTPManager, mountManager mountmngr.MountManager, stateManager statemngr.StateManager, rep pkgVolume.VolumeRepository, logger *logrus.Logger) (pkgVolume.VolumeService, error) {
+func CreateFTPService(mountpoint string, ftpManager ftpmngr.FTPManager, mountManager mountmngr.MountManager, stateManager statemngr.StateManager, rep pkgVolume.VolumeRepository, logger pkgLogger.Logger) (pkgVolume.VolumeService, error) {
 	serv := &service{
 		logger:       logger,
 		rep:          rep,
@@ -110,7 +110,7 @@ func (s *service) Create(name string, opt map[string]string) error {
 	}
 
 	if err := s.stateManager.SaveState(); err != nil {
-		s.logger.WithFields(logrus.Fields{"Error": err}).Error("Failed to update state data file")
+		s.logger.Errorf("Failed to update state data file: %s", err.Error())
 	}
 
 	return nil
@@ -127,13 +127,13 @@ func (s *service) Get(name string) (*volume.Volume, error) {
 func (s *service) Remove(name string) error {
 	volume, err := s.rep.Get(name)
 	if err != nil {
-		s.logger.WithFields(logrus.Fields{"Name": name, "Error": err}).Error("Failed to get volume for remove")
+		s.logger.Errorf("failed to get volume for remove with name: %s, err : %s", name, err.Error())
 		return err
 	}
 
 	if isMount := s.rep.IsMount(name); isMount {
-		s.logger.WithFields(logrus.Fields{"Name": name}).Error("Volume with is currently used")
-		return fmt.Errorf("Volume with name '%s' is currently used", name)
+		s.logger.Errorf("volume with name '%s' is currently used", name)
+		return fmt.Errorf("volume with name '%s' is currently used", name)
 	}
 
 	if err := s.rep.Remove(name); err != nil {
@@ -141,12 +141,11 @@ func (s *service) Remove(name string) error {
 	}
 
 	if err := s.mountManager.Remove(volume); err != nil {
-		s.logger.WithFields(logrus.Fields{"Error": err})
 		return err
 	}
 
 	if err := s.stateManager.SaveState(); err != nil {
-		s.logger.Error("Failed to update state data file")
+		s.logger.Errorf("failed to update state data file: %s", err.Error())
 	}
 
 	return nil
@@ -187,7 +186,7 @@ func (s *service) Unmount(id, name string) error {
 	}
 
 	if !s.rep.IsMount(volume.Name) {
-		return fmt.Errorf("Volume with name: '%s' is not mounted", name)
+		return fmt.Errorf("volume with name: '%s' is not mounted", name)
 	}
 
 	if err := s.rep.Unmount(id, name); err != nil {

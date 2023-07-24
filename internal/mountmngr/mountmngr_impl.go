@@ -7,12 +7,12 @@ import (
 	"os/exec"
 
 	"github.com/docker/go-plugins-helpers/volume"
-	"github.com/sirupsen/logrus"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
+	pkgLogger "github.com/t1d333/docker-volume-ftp-driver/pkg/logger"
 )
 
 type mountmngr struct {
-	logger *logrus.Logger
+	logger pkgLogger.Logger
 }
 
 // errors
@@ -24,7 +24,7 @@ var (
 	RemoveError          = errors.New("Failed to remove volume directory")
 )
 
-func NewMountManager(logger *logrus.Logger) MountManager {
+func NewMountManager(logger pkgLogger.Logger) MountManager {
 	return &mountmngr{logger: logger}
 }
 

@@ -26,3 +26,5 @@ plugin/
 
 # coverage
 profile.cov
+
+profile.filtred.cov

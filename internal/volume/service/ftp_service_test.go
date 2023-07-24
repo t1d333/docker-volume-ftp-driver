@@ -2,13 +2,11 @@ package service
 
 import (
 	"errors"
-	"io"
 	"testing"
 	"time"
 
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,11 +15,15 @@ import (
 	mountMock "github.com/t1d333/docker-volume-ftp-driver/internal/mountmngr/mocks"
 	stateMock "github.com/t1d333/docker-volume-ftp-driver/internal/statemngr/mocks"
 	"github.com/t1d333/docker-volume-ftp-driver/internal/volume/repository"
+	"go.uber.org/zap"
 )
 
 func TestGet(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	ftpmngr := ftpMock.NewFTPManager(t)
 	mountmngr := mountMock.NewMountManager(t)
 	statemngr := stateMock.NewStateManager(t)
@@ -66,8 +68,11 @@ func TestGet(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	ftpmngr := ftpMock.NewFTPManager(t)
 	mountmngr := mountMock.NewMountManager(t)
 	statemngr := stateMock.NewStateManager(t)
@@ -221,8 +226,11 @@ func TestCreate(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	ftpmngr := ftpMock.NewFTPManager(t)
 	mountmngr := mountMock.NewMountManager(t)
 	statemngr := stateMock.NewStateManager(t)
@@ -259,8 +267,11 @@ func TestList(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	ftpmngr := ftpMock.NewFTPManager(t)
 	mountmngr := mountMock.NewMountManager(t)
 	statemngr := stateMock.NewStateManager(t)
@@ -355,8 +366,11 @@ func TestRemove(t *testing.T) {
 }
 
 func TestMount(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	ftpmngr := ftpMock.NewFTPManager(t)
 	mountmngr := mountMock.NewMountManager(t)
 	statemngr := stateMock.NewStateManager(t)
@@ -441,8 +455,11 @@ func TestMount(t *testing.T) {
 }
 
 func TestUnmount(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	ftpmngr := ftpMock.NewFTPManager(t)
 	mountmngr := mountMock.NewMountManager(t)
 	statemngr := stateMock.NewStateManager(t)
@@ -559,8 +576,11 @@ func TestUnmount(t *testing.T) {
 }
 
 func TestPath(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	ftpmngr := ftpMock.NewFTPManager(t)
 	mountmngr := mountMock.NewMountManager(t)
 	statemngr := stateMock.NewStateManager(t)
@@ -602,8 +622,11 @@ func TestPath(t *testing.T) {
 }
 
 func TestCapabilities(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+	conf := zap.NewDevelopmentConfig()
+	conf.Level.SetLevel(zap.PanicLevel)
+	log, _ := conf.Build()
+	logger := log.Sugar()
+
 	ftpmngr := ftpMock.NewFTPManager(t)
 	mountmngr := mountMock.NewMountManager(t)
 	statemngr := stateMock.NewStateManager(t)

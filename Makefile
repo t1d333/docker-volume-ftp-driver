@@ -4,13 +4,14 @@ PLUGIN_NAME = t1d333/ftp-driver
 all: clean rootfs create
 
 test:
-	@go test -v -coverpkg=./... -coverprofile=profile.cov ./...
-
+	@go test -v -coverpkg ./... -coverprofile=profile.cov ./...
+	@cat profile.cov | grep -v mocks > profile.filtred.cov
+	
 lint:
 	@golangci-lint run ./...
 
 coverage: test
-	@go tool cover -func profile.cov
+	@go tool cover -func  profile.filtred.cov
 	
 clean:
 	@rm -rf ./plugin || true

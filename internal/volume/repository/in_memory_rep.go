@@ -6,20 +6,20 @@ import (
 	"sync"
 
 	"github.com/docker/go-plugins-helpers/volume"
-	"github.com/sirupsen/logrus"
 
 	"github.com/t1d333/docker-volume-ftp-driver/internal/models"
 	pkgVolume "github.com/t1d333/docker-volume-ftp-driver/internal/volume"
+	pkgLogger "github.com/t1d333/docker-volume-ftp-driver/pkg/logger"
 )
 
 type repository struct {
 	volumes        *sync.Map
 	options        *sync.Map
 	mountedVolumes *sync.Map
-	logger         *logrus.Logger
+	logger         pkgLogger.Logger
 }
 
-func CreateInMemoryRepository(logger *logrus.Logger) pkgVolume.VolumeRepository {
+func CreateInMemoryRepository(logger pkgLogger.Logger) pkgVolume.VolumeRepository {
 	return &repository{volumes: new(sync.Map), options: new(sync.Map), mountedVolumes: new(sync.Map), logger: logger}
 }
 
